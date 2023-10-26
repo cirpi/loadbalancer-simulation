@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"network/loadbalancer"
 	"network/primitives"
-	"network/worker"
 	"os"
 	"time"
 )
@@ -13,38 +13,31 @@ import (
 // used to check if all the requests were completed
 
 func main() {
-	w := worker.CreateWorker(1)
-	req := make(chan primitives.Request, 10)
-	makeRequests(req)
-	close(req)
+	lb := loadbalancer.Create(4)
 	log.SetOutput(logFile())
-	go func() {
-		for r := range req {
-			log.Println("Adding request ", r.Val)
-			w.AddRequest(r)
-		}
-	}()
-	go func() {
-		for {
-			time.Sleep(time.Second)
-			fmt.Println("Count: ", w.RequestCount)
-		}
-	}()
-	time.Sleep(time.Second * 70)
+	fmt.Println(lb)
+	req := make(chan primitives.Request, 10000)
+	makeRequests(req, lb)
+	close(req)
+	for request := range req {
+		lb.AddRequest(request)
+	}
+	time.Sleep(time.Minute)
 }
 
-func makeRequests(req chan primitives.Request) {
-	for i := 0; i < 10; i++ {
-		i := i
+func makeRequests(req chan primitives.Request, lb *loadbalancer.LoadBalancer) {
+	for i := 0; i < 10000; i++ {
+		rand.Seed(time.Now().Unix())
 		s := rand.Intn(5)
 		curr := primitives.Request{
 			Val: i + 1,
 			Request: func() {
 				time.Sleep(time.Second * time.Duration(s))
 			},
+			ResponseReceiver: lb.Responses,
 		}
 		req <- curr
-		fmt.Println("time for ", i+1, " is ", s)
+		//fmt.Println("time for ", i+1, " is ", s)
 	}
 }
 

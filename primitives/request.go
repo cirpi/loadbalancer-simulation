@@ -5,8 +5,9 @@ import (
 )
 
 type Request struct {
-	Request func()
-	Val     int
+	Request          func()
+	Val              int
+	ResponseReceiver chan Response
 }
 
 func MakeRequests(ch chan<- Request, doneCh chan bool) {
